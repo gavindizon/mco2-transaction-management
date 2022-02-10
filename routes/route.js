@@ -1,8 +1,10 @@
 const express = require("express");
-const { getMoviesCentral, getMoviesSide, addMovieCentral, addMovieSide } = require("../controllers/transactions");
+const { addMovieCentral, addMovieSide, addMovieLogFailure } = require("../controllers/addMovie");
+const { getMoviesCentral, getMoviesSide } = require("../controllers/getMovies");
+
 const router = express.Router();
 
-router.route("/").get(getMoviesSide).post(addMovieCentral, addMovieSide);
+router.route("/").get(getMoviesCentral, getMoviesSide).post(addMovieCentral, addMovieSide, addMovieLogFailure);
 //router.route("/:id");
 
 module.exports = router;
