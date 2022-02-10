@@ -9,6 +9,12 @@ dotenv.config({ path: ".env" });
 const app = express();
 app.use(express.json());
 
-app.use(runInParallel(executeCentralRecovery, executeSideRecovery));
-app.use("/api/movies/", route);
+//app.use();
+app.use("/api/movies/", runInParallel([executeCentralRecovery, executeSideRecovery, route]));
 module.exports = app;
+
+// Years with the Number of Movies
+
+// Most Popular Genre
+
+// Most Popular Director

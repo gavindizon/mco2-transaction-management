@@ -6,6 +6,7 @@ require("dotenv").config();
 
 // RECOVERY LOGS from Node 2 and 3 to Node 1
 exports.executeCentralRecovery = async (req, res, next) => {
+    console.log("EXECUTING CENTRAL RECOVERY");
     const nodes = [node2, node3];
 
     try {
@@ -27,10 +28,11 @@ exports.executeCentralRecovery = async (req, res, next) => {
                 await nodeConn.query(`DELETE FROM log`);
                 await node1Conn.commit();
                 await nodeConn.commit();
+                console.log("FINISH CENTRAL RECOVERY");
             } catch (e) {
                 node1Conn.rollback();
                 nodeConn.rollback();
-                console.log(e);
+                console.log("CENTRAL RECOVERY FAILED");
             }
         }
     } catch (e) {
@@ -42,6 +44,8 @@ exports.executeCentralRecovery = async (req, res, next) => {
 
 exports.executeSideRecovery = async (req, res, next) => {
     const nodes = [node2, node3];
+
+    console.log("EXECUTING SIDE RECOVERY");
 
     try {
         let node1Conn = await mysql.createConnection(node1);
@@ -64,10 +68,13 @@ exports.executeSideRecovery = async (req, res, next) => {
                 await node1Conn.query(`DELETE FROM log WHERE node = ${nodeNumber}`);
                 await node1Conn.commit();
                 await nodeConn.commit();
+                console.log("FINISH SIDE RECOVERY");
             } catch (e) {
                 node1Conn.rollback();
                 nodeConn.rollback();
-                console.log(e);
+
+                //                console.log(e);
+                console.log("SIDE RECOVERY FAILED");
             }
         }
     } catch (e) {
