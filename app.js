@@ -1,12 +1,11 @@
 const express = require("express");
-const path = require("path");
 const dotenv = require("dotenv");
 const route = require("./routes/route");
-const os = require("os");
 
 dotenv.config({ path: ".env" });
 
 const app = express();
+app.use(express.json());
 
-app.use("/api", route);
+app.use("/api/movies/", route);
 module.exports = app;
