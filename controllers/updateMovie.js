@@ -1,55 +1,59 @@
 const { node1, node2, node3 } = require("../database/node.config");
 const mysql = require("mysql2/promise");
-const { v1: uuidv1, v4: uuidv4 } = require("uuid");
 require("dotenv").config();
 
-const insertQuery = `INSERT INTO ${process.env.TABLE_NAME} (uuid, name, year, genre1, genre2, genre3, director) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+//const insertQuery = `INSERT INTO ${process.env.TABLE_NAME} (uuid, name, year, genre1, genre2, genre3, director) VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
-exports.addMovieCentral = async (req, res, next) => {
+exports.updateMovieCentral = async (req, res, next) => {
     const { name, year, genre1, genre2, genre3, director } = req.body;
-    res.locals.body = req.body;
+    const uuid = req.params.id;
 
     res.locals.node1_failure = false;
     res.locals.node2_failure = false;
     res.locals.node3_failure = false;
-    const uuid = req.body.uuid || uuidv4();
-    res.locals.uuid = uuid;
+    let updateQuery = `UPDATE ${process.env.TABLE_NAME}`;
+    let values = `SET name = '${name}', year = ${year}, genre1 = '${genre1}', genre2 = '${genre2}', genre3 = '${genre3}', director = '${director}'`;
+    let where = `WHERE uuid = '${uuid}'`;
+
+    res.locals.updateQuery = updateQuery;
+    res.locals.values = values;
+    res.locals.where = where;
 
     try {
         const node1Conn = await mysql.createConnection(node1);
         await node1Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${process.env.TRANSACTION_LEVEL}`);
         await node1Conn.beginTransaction();
-        const result = await node1Conn.query(insertQuery, [uuid, name, year, genre1, genre2, genre3, director]);
+        const result = await node1Conn.query(`${updateQuery} ${values} ${where}`);
         await node1Conn.commit();
     } catch (e) {
-        console.log("⚡️ NODE 1:Adding Failed make sure to log this");
+        console.log("⚡️ NODE 1:Update Failed make sure to log this");
         res.locals.node1_failure = true;
     } finally {
         next();
     }
 };
 
-exports.addMovieSide = async (req, res, next) => {
-    const { name, year, genre1, genre2, genre3, director } = res.locals?.body || req.body;
+exports.updateMovieSide = async (req, res, next) => {
+    console.log("UPDATING SIDE");
+    const { year } = req.body;
+    //const uuid = req.params.id;
+    const { updateQuery, values, where } = res.locals;
 
     const toNode2 = 1980 > parseInt(year);
-    const uuid = res?.locals?.uuid || uuidv4();
-    console.log("SIDE");
-
     try {
         if (toNode2) {
             // node 2
             const node2Conn = await mysql.createConnection(node2);
             await node2Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${process.env.TRANSACTION_LEVEL}`);
             await node2Conn.beginTransaction();
-            await node2Conn.query(insertQuery, [uuid, name, year, genre1, genre2, genre3, director]);
+            await node2Conn.query(`${updateQuery} ${values} ${where}`);
             await node2Conn.commit();
         } else {
             // node 3
             const node3Conn = await mysql.createConnection(node3);
             await node3Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${process.env.TRANSACTION_LEVEL}`);
             await node3Conn.beginTransaction();
-            await node3Conn.query(insertQuery, [uuid, name, year, genre1, genre2, genre3, director]);
+            await node3Conn.query(`${updateQuery} ${values} ${where}`);
             await node3Conn.commit();
         }
     } catch (e) {
@@ -65,11 +69,12 @@ exports.addMovieSide = async (req, res, next) => {
     }
 };
 
-exports.addMovieLogFailure = async (req, res, next) => {
-    let { name, year, genre1, genre2, genre3, director } = res.locals?.body || req.body;
-    const { node1_failure, node2_failure, node3_failure, uuid } = res.locals;
+exports.updateMovieLogFailure = async (req, res, next) => {
+    let { year } = res.locals?.body || req.body;
+    const { node1_failure, node2_failure, node3_failure } = res.locals;
     year = parseInt(year);
-    const values = `('${uuid}', '${name}', ${year}, '${genre1}', '${genre2}', '${genre3}', '${director}')`;
+    const { values, where } = res.locals;
+
     const logQuery = `INSERT INTO log (operation, node, value) VALUES (?, ?, ?)`;
 
     try {
@@ -85,7 +90,7 @@ exports.addMovieLogFailure = async (req, res, next) => {
 
             const node1Conn = await mysql.createConnection(node1);
             await node1Conn.beginTransaction();
-            await node1Conn.query(`${logQuery}`, ["ADD", year < 1980 ? 2 : 3, values]);
+            await node1Conn.query(`${logQuery}`, ["UPDATE", year < 1980 ? 2 : 3, `${values} ${where}`]);
             await node1Conn.commit();
 
             res.status(201).json({
@@ -106,7 +111,7 @@ exports.addMovieLogFailure = async (req, res, next) => {
             await nodeConn.beginTransaction();
             console.log("2");
 
-            await nodeConn.query(`${logQuery}`, ["ADD", 1, values]);
+            await nodeConn.query(`${logQuery}`, ["UPDATE", 1, `${values} ${where}`]);
             console.log("3");
 
             await nodeConn.commit();

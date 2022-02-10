@@ -1,63 +1,68 @@
 const { node1, node2, node3 } = require("../database/node.config");
 const mysql = require("mysql2/promise");
-const { v1: uuidv1, v4: uuidv4 } = require("uuid");
 require("dotenv").config();
 
-const insertQuery = `INSERT INTO ${process.env.TABLE_NAME} (uuid, name, year, genre1, genre2, genre3, director) VALUES (?, ?, ?, ?, ?, ?, ?)`;
-
-exports.addMovieCentral = async (req, res, next) => {
-    const { name, year, genre1, genre2, genre3, director } = req.body;
-    res.locals.body = req.body;
+exports.deleteMovieCentral = async (req, res, next) => {
+    console.log("DELETING CENTRAL");
+    const uuid = req.params.id;
 
     res.locals.node1_failure = false;
     res.locals.node2_failure = false;
     res.locals.node3_failure = false;
-    const uuid = req.body.uuid || uuidv4();
-    res.locals.uuid = uuid;
+    let deleteQuery = `DELETE FROM ${process.env.TABLE_NAME}`;
+    let where = `WHERE uuid = '${uuid}'`;
+
+    res.locals.deleteQuery = deleteQuery;
+    res.locals.where = where;
 
     try {
         const node1Conn = await mysql.createConnection(node1);
         await node1Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${process.env.TRANSACTION_LEVEL}`);
         await node1Conn.beginTransaction();
-        const result = await node1Conn.query(insertQuery, [uuid, name, year, genre1, genre2, genre3, director]);
+        const record = await node1Conn.query(`SELECT * FROM ${process.env.TABLE_NAME} WHERE uuid = '${uuid}'`);
+
+        res.locals.year = record[0][0]?.year;
+        const result = await node1Conn.query(`${deleteQuery} ${where}`);
         await node1Conn.commit();
     } catch (e) {
-        console.log("⚡️ NODE 1:Adding Failed make sure to log this");
+        console.log(e);
+        console.log("⚡️ NODE 1: Delete Failed make sure to log this");
         res.locals.node1_failure = true;
     } finally {
         next();
     }
 };
 
-exports.addMovieSide = async (req, res, next) => {
-    const { name, year, genre1, genre2, genre3, director } = res.locals?.body || req.body;
+exports.deleteMovieSide = async (req, res, next) => {
+    console.log("DELETING SIDE");
+    const { year } = res.locals;
+    //const uuid = req.params.id;
+    const { deleteQuery, where } = res.locals;
 
     const toNode2 = 1980 > parseInt(year);
-    const uuid = res?.locals?.uuid || uuidv4();
-    console.log("SIDE");
-
     try {
         if (toNode2) {
             // node 2
+            console.log("Connect to Delete Node 2");
             const node2Conn = await mysql.createConnection(node2);
             await node2Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${process.env.TRANSACTION_LEVEL}`);
             await node2Conn.beginTransaction();
-            await node2Conn.query(insertQuery, [uuid, name, year, genre1, genre2, genre3, director]);
+            await node2Conn.query(`${deleteQuery} ${where}`);
             await node2Conn.commit();
         } else {
             // node 3
             const node3Conn = await mysql.createConnection(node3);
             await node3Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${process.env.TRANSACTION_LEVEL}`);
             await node3Conn.beginTransaction();
-            await node3Conn.query(insertQuery, [uuid, name, year, genre1, genre2, genre3, director]);
+            await node3Conn.query(`${deleteQuery} ${where}`);
             await node3Conn.commit();
         }
     } catch (e) {
         if (toNode2) {
-            console.log("⚡️ NODE 2:Adding Failed make sure to log this");
+            console.log("⚡️ NODE 2:Deleting Failed make sure to log this");
             res.locals.node2_failure = true;
         } else {
-            console.log("⚡️ NODE 3:Adding Failed make sure to log this");
+            console.log("⚡️ NODE 3:Deleting Failed make sure to log this");
             res.locals.node3_failure = true;
         }
     } finally {
@@ -65,11 +70,12 @@ exports.addMovieSide = async (req, res, next) => {
     }
 };
 
-exports.addMovieLogFailure = async (req, res, next) => {
-    let { name, year, genre1, genre2, genre3, director } = res.locals?.body || req.body;
-    const { node1_failure, node2_failure, node3_failure, uuid } = res.locals;
+exports.deleteMovieLogFailure = async (req, res, next) => {
+    let { year } = res.locals;
+    const { node1_failure, node2_failure, node3_failure } = res.locals;
     year = parseInt(year);
-    const values = `('${uuid}', '${name}', ${year}, '${genre1}', '${genre2}', '${genre3}', '${director}')`;
+    const uuid = req.params.id;
+
     const logQuery = `INSERT INTO log (operation, node, value) VALUES (?, ?, ?)`;
 
     try {
@@ -85,7 +91,7 @@ exports.addMovieLogFailure = async (req, res, next) => {
 
             const node1Conn = await mysql.createConnection(node1);
             await node1Conn.beginTransaction();
-            await node1Conn.query(`${logQuery}`, ["ADD", year < 1980 ? 2 : 3, values]);
+            await node1Conn.query(`${logQuery}`, ["DELETE", year < 1980 ? 2 : 3, `${uuid}`]);
             await node1Conn.commit();
 
             res.status(201).json({
@@ -106,7 +112,7 @@ exports.addMovieLogFailure = async (req, res, next) => {
             await nodeConn.beginTransaction();
             console.log("2");
 
-            await nodeConn.query(`${logQuery}`, ["ADD", 1, values]);
+            await nodeConn.query(`${logQuery}`, ["DELETE", 1, `${uuid}`]);
             console.log("3");
 
             await nodeConn.commit();

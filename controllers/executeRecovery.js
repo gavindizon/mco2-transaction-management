@@ -73,7 +73,7 @@ exports.executeSideRecovery = async (req, res, next) => {
                 node1Conn.rollback();
                 nodeConn.rollback();
 
-                //                console.log(e);
+                console.log(e);
                 console.log("SIDE RECOVERY FAILED");
             }
         }

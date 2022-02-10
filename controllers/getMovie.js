@@ -84,3 +84,18 @@ exports.getMovieNode3 = async (req, res, next) => {
         });
     }
 };
+
+/**
+ * READ ALL / = index.js (pagination)
+ * ADD /movies =  /movies/index.js
+ * READ 1, UPDATE, DELETE /movies/6edd0152-8a57-11ec-a72c-025dd59827c6 = /movies/[id].js
+ *
+ *
+ */
+
+/**
+ * 1000
+ * 1001
+ * 1001
+ *
+ */
