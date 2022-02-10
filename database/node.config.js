@@ -4,7 +4,7 @@ const node1 = {
     host: process.env.HOSTNAME_NODE_1,
     user: process.env.USERNAME_NODE_1,
     password: process.env.PASSWORD_NODE_1,
-    port: 3306,
+    port: 3307,
     database: process.env.DATABASE_NODE_1,
 };
 
