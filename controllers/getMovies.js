@@ -6,6 +6,12 @@ exports.getMoviesCentral = async (req, res, next) => {
     let offset = req?.query.page ? req.query.page - 1 : 0;
     res.locals.offset = offset;
 
+    let optional = ``;
+    let keyword = req?.query.search || null;
+
+    if (keyword) optional = `WHERE name LIKE '%${keyword}%'`;
+    res.locals.optional = optional;
+
     try {
         const node1Conn = await mysql.createConnection(node1);
 
@@ -16,7 +22,7 @@ exports.getMoviesCentral = async (req, res, next) => {
         await node1Conn.beginTransaction();
 
         const result = await node1Conn.query(
-            `SELECT * FROM ${process.env.TABLE_NAME} ORDER BY name LIMIT ${offset * 10},10 `
+            `SELECT * FROM ${process.env.TABLE_NAME} ${optional} ORDER BY name  LIMIT ${offset * 10},10 `
         );
 
         // end transaction
@@ -47,8 +53,8 @@ exports.getMoviesSide = async (req, res, next) => {
         await node2Conn.beginTransaction();
         await node3Conn.beginTransaction();
 
-        const node2result = await node2Conn.query(`SELECT * FROM ${process.env.TABLE_NAME}`);
-        const node3result = await node3Conn.query(`SELECT * FROM ${process.env.TABLE_NAME}`);
+        const node2result = await node2Conn.query(`SELECT * FROM ${process.env.TABLE_NAME} ${res.locals.optional}`);
+        const node3result = await node3Conn.query(`SELECT * FROM ${process.env.TABLE_NAME} ${res.locals.optional}`);
 
         // end transaction
         await node2Conn.commit();
