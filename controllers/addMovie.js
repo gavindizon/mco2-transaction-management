@@ -30,7 +30,7 @@ exports.addMovieCentral = async (req, res, next) => {
 };
 
 exports.addMovieSide = async (req, res, next) => {
-    const { name, year, genre1, genre2, genre3, director } = res.locals?.body || req.body;
+    const { name, year, genre1, genre2, genre3, director } = res.locals.body || req.body;
 
     const toNode2 = 1980 > parseInt(year);
     const uuid = res?.locals?.uuid || uuidv4();
