@@ -19,6 +19,7 @@
     },
     "homepage": "https://github.com/gavindizon/mco2-transaction-management#readme",
     "dependencies": {
+        "cors": "^2.8.5",
         "dotenv": "^14.3.2",
         "express": "^4.17.2",
         "express-parallel-middleware-loader": "^0.0.2",
