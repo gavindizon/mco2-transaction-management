@@ -34,6 +34,7 @@ exports.getMoviesCentral = async (req, res, next) => {
         });
     } catch (e) {
         console.log("There was an error communicating with the main node");
+        next();
     }
 };
 
@@ -42,6 +43,7 @@ exports.getMoviesSide = async (req, res, next) => {
     let offset = res.locals.offset || req?.params?.page || 0;
     let movies = [];
 
+    console.log("GETTING TO NODE 2 & 3");
     try {
         const node2Conn = await mysql.createConnection(node2);
         const node3Conn = await mysql.createConnection(node3);
