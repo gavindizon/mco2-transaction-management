@@ -12,21 +12,21 @@ exports.getMoviesCentral = async (req, res, next) => {
     if (keyword) optional = `WHERE name LIKE '%${keyword}%'`;
     res.locals.optional = optional;
 
+    let setTx = req.query?.txLvl || "SERIALIZABLE";
+    res.locals.setTx = setTx;
+
     try {
         const node1Conn = await mysql.createConnection(node1);
-
-        // set transaction level to env variable
-        await node1Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${process.env.TRANSACTION_LEVEL}`);
-
-        // start transaction
+        await node1Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${setTx}`);
         await node1Conn.beginTransaction();
-
         const result = await node1Conn.query(
             `SELECT * FROM ${process.env.TABLE_NAME} ${optional} ORDER BY name  LIMIT ${offset * 10},10 `
         );
 
         // end transaction
         await node1Conn.commit();
+        await node1Conn.end();
+
         res.status(200).json({
             status: "Success",
             data: result[0],
@@ -43,13 +43,14 @@ exports.getMoviesSide = async (req, res, next) => {
     let offset = res.locals.offset || req?.params?.page || 0;
     let movies = [];
 
+    let setTx = res.locals.setTx || req.query?.txLvl || "SERIALIZABLE";
     console.log("GETTING TO NODE 2 & 3");
     try {
         const node2Conn = await mysql.createConnection(node2);
         const node3Conn = await mysql.createConnection(node3);
 
-        await node2Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${process.env.TRANSACTION_LEVEL}`);
-        await node3Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${process.env.TRANSACTION_LEVEL}`);
+        await node2Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${setTx}`);
+        await node3Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${setTx}`);
 
         // start transaction
         await node2Conn.beginTransaction();
@@ -61,6 +62,8 @@ exports.getMoviesSide = async (req, res, next) => {
         // end transaction
         await node2Conn.commit();
         await node3Conn.commit();
+        await node2Conn.end();
+        await node3Conn.end();
 
         //process data
         movies = node2result[0].concat(node3result[0]);

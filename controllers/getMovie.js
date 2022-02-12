@@ -3,20 +3,21 @@ const mysql = require("mysql2/promise");
 require("dotenv").config();
 
 exports.getMovieCentral = async (req, res, next) => {
+    console.log("🤝 (1) GETTING A MOVIE CENTRAL");
+
     const id = req.params.id;
-    //console.log(id);
+    const setTx = req.query.txLvl || "SERIALIZABLE";
+    res.locals.setTx = setTx;
+    console.log(setTx);
 
     try {
         const node1Conn = await mysql.createConnection(node1);
-
-        // set transaction level to env variable
-        await node1Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${process.env.TRANSACTION_LEVEL}`);
-
-        // start transaction
+        await node1Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${setTx}`);
         await node1Conn.beginTransaction();
         const result = await node1Conn.query(`SELECT * FROM ${process.env.TABLE_NAME} WHERE uuid = '${id}'`);
-        // end transaction
         await node1Conn.commit();
+        await node1Conn.end();
+
         res.status(200).json({
             status: "Success",
             data: { ...result[0][0] },
@@ -29,21 +30,19 @@ exports.getMovieCentral = async (req, res, next) => {
 };
 
 exports.getMovieNode2 = async (req, res, next) => {
+    console.log("🤝 (2) TRYING TO GET THE MOVIE ON NODE 2");
+
     const id = req.params.id;
-    //console.log(id);
+    const setTx = res.locals.setTx || req.query.txLvl || "SERIALIZABLE";
 
     try {
         const node2Conn = await mysql.createConnection(node2);
-
-        // set transaction level to env variable
-        await node2Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${process.env.TRANSACTION_LEVEL}`);
-
-        // start transaction
+        await node2Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${setTx}`);
         await node2Conn.beginTransaction();
         const result = await node2Conn.query(`SELECT * FROM ${process.env.TABLE_NAME} WHERE uuid = '${id}'`);
-        // end transaction
         await node2Conn.commit();
-        console.log(result[0]);
+        await node2Conn.end();
+
         if (result[0].length === 0) return next();
         res.status(200).json({
             status: "Success",
@@ -57,20 +56,20 @@ exports.getMovieNode2 = async (req, res, next) => {
 };
 
 exports.getMovieNode3 = async (req, res, next) => {
+    console.log("🤝 (3) TRYING TO GET THE MOVIE ON NODE 3");
+
     const id = req.params.id;
+    const setTx = res.locals.setTx || req.query.txLvl || "SERIALIZABLE";
 
     try {
         const node3Conn = await mysql.createConnection(node3);
-
-        // set transaction level to env variable
-        await node3Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${process.env.TRANSACTION_LEVEL}`);
-
-        // start transaction
+        await node3Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${setTx}`);
         await node3Conn.beginTransaction();
         const result = await node3Conn.query(`SELECT * FROM ${process.env.TABLE_NAME} WHERE uuid = '${id}'`);
-        // end transaction
         if (result[0].length === 0) throw new Error("Not found");
         await node3Conn.commit();
+        await node3Conn.end();
+
         res.status(200).json({
             status: "Success",
             data: { ...result[0][0] },
@@ -84,18 +83,3 @@ exports.getMovieNode3 = async (req, res, next) => {
         });
     }
 };
-
-/**
- * READ ALL / = index.js (pagination)
- * ADD /movies =  /movies/index.js
- * READ 1, UPDATE, DELETE /movies/6edd0152-8a57-11ec-a72c-025dd59827c6 = /movies/[id].js
- *
- *
- */
-
-/**
- * 1000
- * 1001
- * 1001
- *
- */
