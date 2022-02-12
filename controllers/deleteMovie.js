@@ -53,13 +53,8 @@ exports.deleteMovieSide = async (req, res, next) => {
         await nodeConn.commit();
         await nodeConn.end();
     } catch (e) {
-        if (toNode2) {
-            console.log("⚡️ NODE 2:Deleting Failed make sure to log this");
-            res.locals.node2_failure = true;
-        } else {
-            console.log("⚡️ NODE 3:Deleting Failed make sure to log this");
-            res.locals.node3_failure = true;
-        }
+        console.log(`⚡️ NODE ${toNode2 ? 2 : 3}: Adding Failed`);
+        toNode2 ? (res.locals.node2_failure = true) : (res.locals.node3_failure = true);
     } finally {
         next();
     }
@@ -86,8 +81,7 @@ exports.deleteMovieLogFailure = async (req, res, next) => {
                     data: [1, 1],
                 });
 
-            console.log(`NODE ${year < 1980 ? 2 : 3} GOES HERE`);
-
+            console.log(`🤝 (4) LOGGING NODE ${year < 1980 ? 2 : 3} FAILURES AT NODE 1`);
             const node1Conn = await mysql.createConnection(node1);
             await node1Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${setTx}`);
             await node1Conn.beginTransaction();
@@ -101,13 +95,14 @@ exports.deleteMovieLogFailure = async (req, res, next) => {
             });
         } else {
             // if all fails
-            console.log("NODE 1 GOES HERE");
+            //console.log("NODE 1 GOES HERE");
             if (node2_failure && node3_failure)
                 return res.status(201).json({
                     status: "Fail",
                     data: [0, 0],
                 });
 
+            console.log(`🤝 (4) LOGGING NODE 1 FAILURES AT NODE ${year < 1980 ? 2 : 3} `);
             let nodeConn = await mysql.createConnection(year < 1980 ? node2 : node3);
             await nodeConn.execute(`SET TRANSACTION ISOLATION LEVEL ${setTx}`);
             await nodeConn.beginTransaction();
