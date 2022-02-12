@@ -3,9 +3,12 @@ const mysql = require("mysql2/promise");
 require("dotenv").config();
 
 exports.deleteMovieCentral = async (req, res, next) => {
-    console.log("DELETING CENTRAL");
-    const uuid = req.params.id;
+    console.log("🤝 (1) DELETING TO CENTRAL");
 
+    let setTx = req.body.txLvl || "SERIALIZABLE";
+    res.locals.setTx = setTx;
+
+    const uuid = req.params.id;
     res.locals.node1_failure = false;
     res.locals.node2_failure = false;
     res.locals.node3_failure = false;
@@ -17,7 +20,7 @@ exports.deleteMovieCentral = async (req, res, next) => {
 
     try {
         const node1Conn = await mysql.createConnection(node1);
-        await node1Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${process.env.TRANSACTION_LEVEL}`);
+        await node1Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${setTx}`);
         await node1Conn.beginTransaction();
         const record = await node1Conn.query(`SELECT * FROM ${process.env.TABLE_NAME} WHERE uuid = '${uuid}'`);
 
@@ -34,29 +37,21 @@ exports.deleteMovieCentral = async (req, res, next) => {
 };
 
 exports.deleteMovieSide = async (req, res, next) => {
-    console.log("DELETING SIDE");
     const { year } = res.locals;
     //const uuid = req.params.id;
-    const { deleteQuery, where } = res.locals;
+    const { deleteQuery, where, setTx } = res.locals;
 
+    setTx = setTx || req.body.txLvl || "SERIALIZABLE";
     const toNode2 = 1980 > parseInt(year);
+
+    console.log(`🤝 (2) DELETING TO SIDE NODE ${toNode2 ? 2 : 3}`);
     try {
-        if (toNode2) {
-            // node 2
-            console.log("Connect to Delete Node 2");
-            const node2Conn = await mysql.createConnection(node2);
-            await node2Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${process.env.TRANSACTION_LEVEL}`);
-            await node2Conn.beginTransaction();
-            await node2Conn.query(`${deleteQuery} ${where}`);
-            await node2Conn.commit();
-        } else {
-            // node 3
-            const node3Conn = await mysql.createConnection(node3);
-            await node3Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${process.env.TRANSACTION_LEVEL}`);
-            await node3Conn.beginTransaction();
-            await node3Conn.query(`${deleteQuery} ${where}`);
-            await node3Conn.commit();
-        }
+        const nodeConn = await mysql.createConnection(toNode2 ? node2 : node3);
+        await nodeConn.execute(`SET TRANSACTION ISOLATION LEVEL ${setTx}`);
+        await nodeConn.beginTransaction();
+        await nodeConn.query(`${deleteQuery} ${where}`);
+        await nodeConn.commit();
+        await nodeConn.end();
     } catch (e) {
         if (toNode2) {
             console.log("⚡️ NODE 2:Deleting Failed make sure to log this");
@@ -71,7 +66,11 @@ exports.deleteMovieSide = async (req, res, next) => {
 };
 
 exports.deleteMovieLogFailure = async (req, res, next) => {
-    let { year } = res.locals;
+    console.log("🤝 (3) CHECKING FAILURE IN DELETE");
+
+    let { year, setTx } = res.locals;
+    setTx = setTx || req.body.txLvl || "SERIALIZABLE";
+
     const { node1_failure, node2_failure, node3_failure } = res.locals;
     year = parseInt(year);
     const uuid = req.params.id;
@@ -90,9 +89,11 @@ exports.deleteMovieLogFailure = async (req, res, next) => {
             console.log(`NODE ${year < 1980 ? 2 : 3} GOES HERE`);
 
             const node1Conn = await mysql.createConnection(node1);
+            await node1Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${setTx}`);
             await node1Conn.beginTransaction();
             await node1Conn.query(`${logQuery}`, ["DELETE", year < 1980 ? 2 : 3, `${uuid}`]);
             await node1Conn.commit();
+            await node1Conn.end();
 
             res.status(201).json({
                 status: "Partial Success",
@@ -108,14 +109,11 @@ exports.deleteMovieLogFailure = async (req, res, next) => {
                 });
 
             let nodeConn = await mysql.createConnection(year < 1980 ? node2 : node3);
-            console.log("1");
+            await nodeConn.execute(`SET TRANSACTION ISOLATION LEVEL ${setTx}`);
             await nodeConn.beginTransaction();
-            console.log("2");
-
             await nodeConn.query(`${logQuery}`, ["DELETE", 1, `${uuid}`]);
-            console.log("3");
-
             await nodeConn.commit();
+            await nodeConn.end();
 
             res.status(201).json({
                 status: "Partial Success",

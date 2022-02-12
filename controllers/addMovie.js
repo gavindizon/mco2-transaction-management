@@ -6,21 +6,27 @@ require("dotenv").config();
 const insertQuery = `INSERT INTO ${process.env.TABLE_NAME} (uuid, name, year, genre1, genre2, genre3, director) VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
 exports.addMovieCentral = async (req, res, next) => {
-    const { name, year, genre1, genre2, genre3, director } = req.body;
-    res.locals.body = req.body;
+    console.log("🤝 (1) ADDING TO CENTRAL");
 
+    const { name, year, genre1, genre2, genre3, director, txLvl } = req.body;
+    res.locals.body = req.body;
     res.locals.node1_failure = false;
     res.locals.node2_failure = false;
     res.locals.node3_failure = false;
-    const uuid = req.body.uuid || uuidv4();
+
+    const uuid = uuidv4();
     res.locals.uuid = uuid;
+
+    let setTx = txLvl === null ? "SERIALIZABLE" : txLvl;
+    res.locals.setTx = setTx;
 
     try {
         const node1Conn = await mysql.createConnection(node1);
-        await node1Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${process.env.TRANSACTION_LEVEL}`);
+        await node1Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${setTx}`);
         await node1Conn.beginTransaction();
         const result = await node1Conn.query(insertQuery, [uuid, name, year, genre1, genre2, genre3, director]);
         await node1Conn.commit();
+        await node1Conn.end();
     } catch (e) {
         console.log("⚡️ NODE 1:Adding Failed make sure to log this");
         res.locals.node1_failure = true;
@@ -30,48 +36,38 @@ exports.addMovieCentral = async (req, res, next) => {
 };
 
 exports.addMovieSide = async (req, res, next) => {
-    const { name, year, genre1, genre2, genre3, director } = res.locals.body || req.body;
-
+    const { name, year, genre1, genre2, genre3, director, txLvl } = res.locals.body || req.body;
     const toNode2 = 1980 > parseInt(year);
     const uuid = res?.locals?.uuid || uuidv4();
-    console.log("SIDE");
+    let setTx = res.locals.setTx || txLvl || "SERIALIZABLE";
 
+    console.log(`🤝 (2) ADDING TO SIDE NODE ${toNode2 ? 2 : 3}`);
     try {
-        if (toNode2) {
-            // node 2
-            const node2Conn = await mysql.createConnection(node2);
-            await node2Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${process.env.TRANSACTION_LEVEL}`);
-            await node2Conn.beginTransaction();
-            await node2Conn.query(insertQuery, [uuid, name, year, genre1, genre2, genre3, director]);
-            await node2Conn.commit();
-        } else {
-            // node 3
-            const node3Conn = await mysql.createConnection(node3);
-            await node3Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${process.env.TRANSACTION_LEVEL}`);
-            await node3Conn.beginTransaction();
-            await node3Conn.query(insertQuery, [uuid, name, year, genre1, genre2, genre3, director]);
-            await node3Conn.commit();
-        }
+        const nodeConn = await mysql.createConnection(toNode2 ? node2 : node3);
+        await nodeConn.execute(`SET TRANSACTION ISOLATION LEVEL ${setTx}`);
+        await nodeConn.beginTransaction();
+        await nodeConn.query(insertQuery, [uuid, name, year, genre1, genre2, genre3, director]);
+        await nodeConn.commit();
+        await nodeConn.end();
     } catch (e) {
-        if (toNode2) {
-            console.log("⚡️ NODE 2:Adding Failed make sure to log this");
-            res.locals.node2_failure = true;
-        } else {
-            console.log("⚡️ NODE 3:Adding Failed make sure to log this");
-            res.locals.node3_failure = true;
-        }
+        console.log(`⚡️ NODE ${toNode2 ? 2 : 3}: Adding Failed`);
+        toNode2 ? (res.locals.node2_failure = true) : (res.locals.node3_failure = true);
     } finally {
         next();
     }
 };
 
 exports.addMovieLogFailure = async (req, res, next) => {
-    let { name, year, genre1, genre2, genre3, director } = res.locals?.body || req.body;
-    const { node1_failure, node2_failure, node3_failure, uuid } = res.locals;
+    console.log("🤝 (3) CHECKING FAILURE IN ADD");
+
+    let { name, year, genre1, genre2, genre3, director, txLvl } = res.locals?.body || req.body;
+    let { node1_failure, node2_failure, node3_failure, uuid, setTx } = res.locals;
     year = parseInt(year);
+
+    setTx = setTx || txLvl || "SERIALIZABLE";
+
     const values = `('${uuid}', '${name}', ${year}, '${genre1}', '${genre2}', '${genre3}', '${director}')`;
     const logQuery = `INSERT INTO log (operation, node, value) VALUES (?, ?, ?)`;
-
     try {
         // if no failure to node 1
         if (!node1_failure) {
@@ -81,12 +77,13 @@ exports.addMovieLogFailure = async (req, res, next) => {
                     data: [1, 1],
                 });
 
-            console.log(`NODE ${year < 1980 ? 2 : 3} GOES HERE`);
-
+            console.log(`🤝 (4) LOGGING NODE ${year < 1980 ? 2 : 3} FAILURES AT NODE 1`);
             const node1Conn = await mysql.createConnection(node1);
+            await node1Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${setTx}`);
             await node1Conn.beginTransaction();
             await node1Conn.query(`${logQuery}`, ["ADD", year < 1980 ? 2 : 3, values]);
             await node1Conn.commit();
+            await node1Conn.end();
 
             res.status(201).json({
                 status: "Partial Success",
@@ -101,15 +98,14 @@ exports.addMovieLogFailure = async (req, res, next) => {
                     data: [0, 0],
                 });
 
+            console.log(`🤝 (4) LOGGING NODE 1 FAILURES AT NODE ${year < 1980 ? 2 : 3} `);
+
             let nodeConn = await mysql.createConnection(year < 1980 ? node2 : node3);
-            console.log("1");
+            await nodeConn.execute(`SET TRANSACTION ISOLATION LEVEL ${setTx}`);
             await nodeConn.beginTransaction();
-            console.log("2");
-
             await nodeConn.query(`${logQuery}`, ["ADD", 1, values]);
-            console.log("3");
-
             await nodeConn.commit();
+            await nodeConn.end();
 
             res.status(201).json({
                 status: "Partial Success",
