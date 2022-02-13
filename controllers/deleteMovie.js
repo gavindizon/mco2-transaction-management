@@ -40,7 +40,7 @@ exports.deleteMovieCentral = async (req, res, next) => {
 exports.deleteMovieSide = async (req, res, next) => {
     const { year } = res.locals;
     //const uuid = req.params.id;
-    const { deleteQuery, where, setTx } = res.locals;
+    let { deleteQuery, where, setTx } = res.locals;
 
     setTx = setTx || req.body.txLvl || "SERIALIZABLE";
     const toNode2 = 1980 > parseInt(year);
