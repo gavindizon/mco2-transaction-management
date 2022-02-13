@@ -3,6 +3,8 @@ const mysql = require("mysql2/promise");
 require("dotenv").config();
 
 exports.getMoviesCentral = async (req, res, next) => {
+    console.log("🤝 (1) GETTING MOVIES CENTRAL");
+
     let offset = req?.query.page ? req.query.page - 1 : 0;
     res.locals.offset = offset;
 
@@ -15,7 +17,11 @@ exports.getMoviesCentral = async (req, res, next) => {
     let setTx = req.query?.txLvl || "SERIALIZABLE";
     res.locals.setTx = setTx;
 
+    console.log("TX LVL:", setTx);
+
     try {
+        console.log("GET:", node1);
+
         const node1Conn = await mysql.createConnection(node1);
         await node1Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${setTx}`);
         await node1Conn.beginTransaction();
@@ -25,7 +31,6 @@ exports.getMoviesCentral = async (req, res, next) => {
 
         // end transaction
         await node1Conn.commit();
-        await node1Conn.end();
 
         res.status(200).json({
             status: "Success",
@@ -39,12 +44,13 @@ exports.getMoviesCentral = async (req, res, next) => {
 };
 
 exports.getMoviesSide = async (req, res, next) => {
-    // Try node 2 and 3
+    console.log("🤝 (2) GETTING MOVIES SIDE");
+
     let offset = res.locals.offset || req?.params?.page || 0;
     let movies = [];
 
     let setTx = res.locals.setTx || req.query?.txLvl || "SERIALIZABLE";
-    console.log("GETTING TO NODE 2 & 3");
+
     try {
         const node2Conn = await mysql.createConnection(node2);
         const node3Conn = await mysql.createConnection(node3);
@@ -62,8 +68,6 @@ exports.getMoviesSide = async (req, res, next) => {
         // end transaction
         await node2Conn.commit();
         await node3Conn.commit();
-        await node2Conn.end();
-        await node3Conn.end();
 
         //process data
         movies = node2result[0].concat(node3result[0]);
@@ -71,12 +75,7 @@ exports.getMoviesSide = async (req, res, next) => {
         // sort by name
         movies.sort((a, b) => (a.name < b.name ? -1 : 1));
 
-        //      console.log(movies);
-
-        console.log(offset);
         movies = movies.slice(offset * 10, offset * 10 + 10);
-
-        //        console.log(movies);
 
         res.status(200).json({
             status: "Success",

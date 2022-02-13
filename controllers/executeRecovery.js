@@ -6,11 +6,12 @@ require("dotenv").config();
 
 // RECOVERY LOGS from Node 2 and 3 to Node 1
 exports.executeCentralRecovery = async (req, res, next) => {
-    console.log("EXECUTING CENTRAL RECOVERY");
+    console.log("[🔧] EXECUTING CENTRAL RECOVERY");
     const nodes = [node2, node3];
 
     try {
         let node1Conn = await mysql.createConnection(node1);
+        console.log("RECOVER", node1);
 
         for (let node of nodes) {
             // RETRIEVE log from nodes
@@ -28,6 +29,8 @@ exports.executeCentralRecovery = async (req, res, next) => {
                 await nodeConn.query(`DELETE FROM log`);
                 await node1Conn.commit();
                 await nodeConn.commit();
+                await nodeConn.end();
+
                 console.log("FINISH CENTRAL RECOVERY");
             } catch (e) {
                 node1Conn.rollback();
@@ -36,16 +39,14 @@ exports.executeCentralRecovery = async (req, res, next) => {
             }
         }
     } catch (e) {
-        //console.log(e);
-    } finally {
-        next();
+        console.log("[🔧]", e);
     }
 };
 
 exports.executeSideRecovery = async (req, res, next) => {
     const nodes = [node2, node3];
 
-    console.log("EXECUTING SIDE RECOVERY");
+    console.log("[🔧] EXECUTING SIDE RECOVERY");
 
     try {
         let node1Conn = await mysql.createConnection(node1);
@@ -54,6 +55,8 @@ exports.executeSideRecovery = async (req, res, next) => {
             let nodeNumber = node.database === "mco2_node2" ? 2 : 3;
             // GET CONNECTION
             let nodeConn = await mysql.createConnection(node);
+            console.log("HELLOOOOOOO ");
+
             try {
                 // RETRIEVE log from nodes
                 await node1Conn.beginTransaction();
@@ -68,6 +71,7 @@ exports.executeSideRecovery = async (req, res, next) => {
                 await node1Conn.query(`DELETE FROM log WHERE node = ${nodeNumber}`);
                 await node1Conn.commit();
                 await nodeConn.commit();
+                await nodeConn.end();
                 console.log("FINISH SIDE RECOVERY");
             } catch (e) {
                 node1Conn.rollback();
@@ -78,7 +82,6 @@ exports.executeSideRecovery = async (req, res, next) => {
             }
         }
     } catch (e) {
-    } finally {
-        next();
+        console.log("[🔧]", e);
     }
 };

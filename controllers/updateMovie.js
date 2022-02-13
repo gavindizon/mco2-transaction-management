@@ -72,6 +72,8 @@ exports.updateMovieLogFailure = async (req, res, next) => {
     setTx = setTx || txLvl || "SERIALIZABLE";
     const logQuery = `INSERT INTO log (operation, node, value) VALUES (?, ?, ?)`;
 
+    console.log("TX LVL:", setTx);
+
     try {
         // if no failure to node 1
         if (!node1_failure) {

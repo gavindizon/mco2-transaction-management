@@ -8,8 +8,8 @@ exports.getMovieCentral = async (req, res, next) => {
     const id = req.params.id;
     const setTx = req.query.txLvl || "SERIALIZABLE";
     res.locals.setTx = setTx;
-    console.log(setTx);
 
+    console.log("TX LVL:", setTx);
     try {
         const node1Conn = await mysql.createConnection(node1);
         await node1Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${setTx}`);
