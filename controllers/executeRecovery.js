@@ -11,7 +11,6 @@ exports.executeCentralRecovery = async (req, res, next) => {
 
     try {
         let node1Conn = await mysql.createConnection(node1);
-        console.log("RECOVER", node1);
 
         for (let node of nodes) {
             // RETRIEVE log from nodes
@@ -55,7 +54,6 @@ exports.executeSideRecovery = async (req, res, next) => {
             let nodeNumber = node.database === "mco2_node2" ? 2 : 3;
             // GET CONNECTION
             let nodeConn = await mysql.createConnection(node);
-            console.log("HELLOOOOOOO ");
 
             try {
                 // RETRIEVE log from nodes

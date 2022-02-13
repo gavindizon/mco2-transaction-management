@@ -20,8 +20,6 @@ exports.getMoviesCentral = async (req, res, next) => {
     console.log("TX LVL:", setTx);
 
     try {
-        console.log("GET:", node1);
-
         const node1Conn = await mysql.createConnection(node1);
         await node1Conn.execute(`SET TRANSACTION ISOLATION LEVEL ${setTx}`);
         await node1Conn.beginTransaction();
