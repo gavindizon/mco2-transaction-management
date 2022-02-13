@@ -26,9 +26,8 @@ exports.getMoviesCentral = async (req, res, next) => {
         const result = await node1Conn.query(
             `SELECT * FROM ${process.env.TABLE_NAME} ${optional} ORDER BY name  LIMIT ${offset * 10},10 `
         );
-
-        // end transaction
         await node1Conn.commit();
+        await node1Conn.end();
 
         res.status(200).json({
             status: "Success",
@@ -66,6 +65,9 @@ exports.getMoviesSide = async (req, res, next) => {
         // end transaction
         await node2Conn.commit();
         await node3Conn.commit();
+
+        await node2Conn.end();
+        await node3Conn.end();
 
         //process data
         movies = node2result[0].concat(node3result[0]);

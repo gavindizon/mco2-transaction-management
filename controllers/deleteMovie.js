@@ -28,6 +28,7 @@ exports.deleteMovieCentral = async (req, res, next) => {
         res.locals.year = record[0][0]?.year;
         const result = await node1Conn.query(`${deleteQuery} ${where}`);
         await node1Conn.commit();
+        await node1Conn.end();
     } catch (e) {
         console.log(e);
         console.log("⚡️ NODE 1: Delete Failed make sure to log this");
