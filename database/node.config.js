@@ -6,7 +6,7 @@ const node1 = {
     password: process.env.PASSWORD_NODE_1,
     port: 3306,
     database: process.env.DATABASE_NODE_1,
-    connectTimeout: 3500,
+    connectTimeout: 4500,
 };
 
 const node2 = {
@@ -15,7 +15,7 @@ const node2 = {
     password: process.env.PASSWORD_NODE_2,
     port: 3306,
     database: process.env.DATABASE_NODE_2,
-    connectTimeout: 3500,
+    connectTimeout: 4500,
 };
 
 const node3 = {
@@ -24,7 +24,7 @@ const node3 = {
     password: process.env.PASSWORD_NODE_3,
     port: 3306,
     database: process.env.DATABASE_NODE_3,
-    connectTimeout: 3500,
+    connectTimeout: 4500,
 };
 
 module.exports = { node1, node2, node3 };
