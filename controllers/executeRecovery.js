@@ -33,12 +33,7 @@ exports.executeCentralRecovery = async (req, res, next) => {
 
                 console.log("FINISH CENTRAL RECOVERY");
             } catch (e) {
-                await node1Conn.rollback();
-                await nodeConn.rollback();
-                await node1Conn.end();
-                await nodeConn.end();
-
-                console.log("CENTRAL RECOVERY FAILED");
+                console.log("[🔧] CENTRAL RECOVERY FAILED");
             }
         }
     } catch (e) {
@@ -77,13 +72,7 @@ exports.executeSideRecovery = async (req, res, next) => {
                 await nodeConn.end();
                 console.log("FINISH SIDE RECOVERY");
             } catch (e) {
-                await node1Conn.rollback();
-                await nodeConn.rollback();
-                await node1Conn.end();
-                await nodeConn.end();
-
-                console.log(e);
-                console.log("SIDE RECOVERY FAILED");
+                console.log("[🔧] SIDE RECOVERY FAILED");
             }
         }
     } catch (e) {
