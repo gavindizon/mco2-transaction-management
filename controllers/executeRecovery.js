@@ -33,8 +33,8 @@ exports.executeCentralRecovery = async (req, res, next) => {
 
                 console.log("FINISH CENTRAL RECOVERY");
             } catch (e) {
-                node1Conn.rollback();
-                nodeConn.rollback();
+                await node1Conn.rollback();
+                await nodeConn.rollback();
                 await node1Conn.end();
                 await nodeConn.end();
 
@@ -77,8 +77,8 @@ exports.executeSideRecovery = async (req, res, next) => {
                 await nodeConn.end();
                 console.log("FINISH SIDE RECOVERY");
             } catch (e) {
-                node1Conn.rollback();
-                nodeConn.rollback();
+                await node1Conn.rollback();
+                await nodeConn.rollback();
                 await node1Conn.end();
                 await nodeConn.end();
 
