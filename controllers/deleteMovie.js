@@ -7,6 +7,7 @@ exports.deleteMovieCentral = async (req, res, next) => {
 
     let setTx = req.body.txLvl || "SERIALIZABLE";
     res.locals.setTx = setTx;
+    res.locals.year = req.body.year;
 
     const uuid = req.params.id;
     res.locals.node1_failure = false;
