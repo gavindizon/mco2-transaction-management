@@ -28,14 +28,16 @@ exports.executeCentralRecovery = async (req, res, next) => {
                 await nodeConn.query(`DELETE FROM log`);
                 await node1Conn.commit();
                 await nodeConn.commit();
-                await node1Conn.end();
                 await nodeConn.end();
 
                 console.log("FINISH CENTRAL RECOVERY");
             } catch (e) {
                 console.log("[🔧] CENTRAL RECOVERY FAILED");
-            }
+                console.log("[🔧]", e);
+            } 
         }
+        await node1Conn.end();
+
     } catch (e) {
         console.log("[🔧]", e);
     }
@@ -68,13 +70,15 @@ exports.executeSideRecovery = async (req, res, next) => {
                 await node1Conn.query(`DELETE FROM log WHERE node = ${nodeNumber}`);
                 await node1Conn.commit();
                 await nodeConn.commit();
-                await node1Conn.end();
                 await nodeConn.end();
                 console.log("FINISH SIDE RECOVERY");
             } catch (e) {
                 console.log("[🔧] SIDE RECOVERY FAILED");
+                console.log("[🔧]", e);
             }
         }
+        await node1Conn.end();
+        
     } catch (e) {
         console.log("[🔧]", e);
     }
